@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Authentication Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold text-center mb-6">JWT Authentication Demo</h1>
+            
+            <!-- Login Form -->
+            <div id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700">Usuario</label>
+                    <input type="text" id="username" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-gray-700">Contraseña</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <button onclick="login()" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    Iniciar Sesión
+                </button>
+            </div>
+
+            <!-- Token Display -->
+            <div id="tokenInfo" class="hidden mt-6 p-4 bg-gray-50 rounded-lg">
+                <h2 class="font-semibold mb-2">Tokens</h2>
+                <div class="space-y-2">
+                    <div>
+                        <label class="block text-sm text-gray-600">Access Token:</label>
+                        <div id="accessToken" class="text-xs bg-gray-200 p-2 rounded break-all"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-600">Refresh Token:</label>
+                        <div id="refreshToken" class="text-xs bg-gray-200 p-2 rounded break-all"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Protected Content -->
+            <div class="mt-6 space-y-4">
+                <button onclick="testProtectedEndpoint()" class="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors">
+                    Probar Endpoint Protegido
+                </button>
+                <div id="protectedContent" class="hidden p-4 bg-green-100 rounded-lg">
+                    <pre id="protectedResponse" class="whitespace-pre-wrap"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAccessToken = '';
+        let currentRefreshToken = '';
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentAccessToken = data.access;
+                    currentRefreshToken = data.refresh;
+                    
+                    document.getElementById('accessToken').textContent = data.access;
+                    document.getElementById('refreshToken').textContent = data.refresh;
+                    document.getElementById('tokenInfo').classList.remove('hidden');
+                    
+                    showMessage('Login exitoso', 'green');
+                } else {
+                    showMessage('Error: ' + data.error, 'red');
+                }
+            } catch (error) {
+                showMessage('Error al conectar con el servidor', 'red');
+            }
+        }
+
+        async function testProtectedEndpoint() {
+            try {
+                const response = await fetch('/api/test/', {
+                    headers: {
+                        'Authorization': `Bearer ${currentAccessToken}`,
+                    },
+                });
+
+                const data = await response.json();
+                
+                const protectedContent = document.getElementById('protectedContent');
+                const protectedResponse = document.getElementById('protectedResponse');
+                
+                protectedContent.classList.remove('hidden');
+                protectedResponse.textContent = JSON.stringify(data, null, 2);
+                
+                if (response.ok) {
+                    protectedContent.classList.remove('bg-red-100');
+                    protectedContent.classList.add('bg-green-100');
+                } else {
+                    protectedContent.classList.remove('bg-green-100');
+                    protectedContent.classList.add('bg-red-100');
+                }
+            } catch (error) {
+                showMessage('Error al conectar con el endpoint protegido', 'red');
+            }
+        }
+
+        function showMessage(message, color) {
+            const div = document.createElement('div');
+            div.textContent = message;
+            div.className = `fixed top-4 right-4 p-4 rounded-lg text-white bg-${color}-500`;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
